@@ -35,8 +35,36 @@ export async function generateQuiz(input, key) {
       }),
       signal: AbortSignal.timeout(55000),
     })
-    if (!response.ok) throw new Error('Quiz provider returned ' + response.status + '.')
-    const data = await response.json()
+    if (!response.ok) {
+      const providerBody = await response.text().catch(() => '')
+      let providerMessage = ''
+      let providerType = ''
+      try {
+        const parsedError = JSON.parse(providerBody)
+        const detail = parsedError?.error
+        providerMessage = typeof detail === 'string' ? detail : typeof detail?.message === 'string' ? detail.message : ''
+        providerType = typeof detail?.type === 'string' ? detail.type : ''
+      } catch {
+        providerMessage = providerBody.replace(/\s+/g, ' ').trim().slice(0, 300)
+      }
+      const safeDetail = providerMessage
+        .replace(/Bearer\s+\S+/gi, 'Bearer [redacted]')
+        .replace(/(?:sk|key|token)[-_ ]?[a-z0-9]{12,}/gi, '[redacted credential]')
+        .slice(0, 300)
+      const statusHint = response.status === 401
+        ? 'RootsSys rejected the API key (401). Check that ROOTSYS_API_KEY is the correct active key.'
+        : response.status === 403
+          ? 'RootsSys denied the request (403). This can mean the key lacks access or the service/model is unavailable.'
+          : response.status === 429
+            ? 'RootsSys rate limit or credit limit reached (429).'
+            : response.status >= 500
+              ? 'RootsSys is having a server-side problem (' + response.status + ').'
+              : 'RootsSys rejected the request (' + response.status + ').'
+      throw new Error([statusHint, safeDetail, providerType ? 'type: ' + providerType : ''].filter(Boolean).join(' - '))
+    }
+    let data
+    try { data = await response.json() }
+    catch { throw new Error('RootsSys returned HTTP ' + response.status + ' but its response was not valid JSON.') }
     const choice = data.choices?.[0]
     const raw = typeof choice?.message?.content === 'string' ? choice.message.content : Array.isArray(choice?.message?.content) ? choice.message.content.map(part => typeof part?.text === 'string' ? part.text : '').join('') : ''
     if (choice?.finish_reason === 'length') throw new Error('The quiz answer was cut off. Try a shorter round or try again.')
@@ -69,10 +97,12 @@ export async function generateQuiz(input, key) {
     if (!questions.length) throw new Error('The model could not make supported questions from these notes. Try a text-rich document or Explore mode.')
     return { status: 200, body: { questions } }
   } catch (error) {
-    const message = error.message === 'Unexpected end of JSON input'
-      ? 'The quiz provider returned an incomplete response. Please try again or choose fewer questions.'
-      : error.message
+    const message = error.name === 'TimeoutError' || error.name === 'AbortError'
+      ? 'Quiz generation timed out while waiting for RootsSys (55-second limit). Try fewer questions or retry in a moment.'
+      : error.message === 'Unexpected end of JSON input'
+        ? 'RootsSys returned incomplete JSON. Try fewer questions or retry.'
+        : error.message || 'Unexpected error while generating the quiz.'
     console.error('Quiz generation failed:', message)
-    return { status: 502, body: { error: message?.startsWith('The model could') || message?.startsWith('The quiz provider') || message?.startsWith('The quiz answer') ? message : 'Could not generate the quiz right now. Please try again.' } }
+    return { status: message.startsWith('The model could') ? 422 : 502, body: { error: message } }
   }
 }
