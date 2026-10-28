@@ -281,7 +281,7 @@ function App() {
       let generationNotice = ''
       const generationStarted = performance.now()
       setGenerationEstimate(Math.ceil(target / batchSize) * 20)
-      while (collected.length < target && attempts < Math.ceil(target / 3) + 3) {
+      while (collected.length < target && attempts < target) {
         attempts++
         const requestCount = Math.max(3, Math.min(batchSize, target - collected.length))
         setBusy('Making your quiz... ' + (collected.length + 1) + '-' + Math.min(target, collected.length + requestCount) + ' of ' + target)
