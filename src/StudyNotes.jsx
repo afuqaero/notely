@@ -5,10 +5,10 @@ import { renderRichText } from './format.js'
 function splitSource(text) {
   const chunks = []
   let remaining = text.trim()
-  while (remaining.length > 2200) {
-    const window = remaining.slice(1600, 2200)
+  while (remaining.length > 1400) {
+    const window = remaining.slice(1000, 1400)
     const end = Math.max(window.lastIndexOf('. '), window.lastIndexOf(' '))
-    const cut = end < 0 ? 2200 : 1600 + end + 1
+    const cut = end < 0 ? 1400 : 1000 + end + 1
     chunks.push(remaining.slice(0, cut).trim())
     remaining = remaining.slice(cut).trim()
   }
@@ -38,7 +38,7 @@ export async function createStudyNotes(notes, onProgress, onDocument) {
       let result
       try { result = await requestNotes({ stage: 'section', name: note.name, text: chunks[index], index, total: chunks.length }) }
       catch (error) {
-        if (chunks[index].length < 1100) throw error
+        if (chunks[index].length < 800) throw error
         const midpoint = Math.floor(chunks[index].length / 2)
         const cut = chunks[index].lastIndexOf(' ', midpoint)
         if (cut < 80 || chunks[index].length - cut < 80) throw error
