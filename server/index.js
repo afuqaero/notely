@@ -3,6 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { answerNotesChat, answerTutor } from './tutor.js'
 import { generateQuiz } from './quiz.js'
+import { generateStudyNotes } from './study-notes.js'
 
 const app = express()
 app.disable('x-powered-by')
@@ -20,6 +21,11 @@ app.post('/api/tutor', async (req, res) => {
 })
 app.post('/api/notes-chat', async (req, res) => {
   const result = await answerNotesChat(req.body, process.env.ROOTSYS_API_KEY)
+  res.status(result.status).json(result.body)
+})
+
+app.post('/api/study-notes', async (req, res) => {
+  const result = await generateStudyNotes(req.body, process.env.ROOTSYS_API_KEY)
   res.status(result.status).json(result.body)
 })
 
