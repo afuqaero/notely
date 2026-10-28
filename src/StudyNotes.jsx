@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react'
+import React from 'react'
 import { ArrowLeft, BookOpen, Download, LoaderCircle, Sparkles } from 'lucide-react'
-import { renderRichText } from './format.js'
+import { downloadStudyPdf } from './studyPdf.js'
 
 function splitSource(text) {
   const chunks = []
@@ -64,53 +64,29 @@ export async function createStudyNotes(notes, onProgress, onDocument) {
     onProgress(`Finishing ${note.name}: exam recap`)
     const closing = await requestNotes({ stage: 'closing', name: note.name, text: concepts, index: 0, total: 1 })
     if (!opening.content || !closing.content) throw new Error('The AI returned an incomplete recap. Please try again.')
-    onDocument({ name: note.name, content: [opening.content, '## 2. Concepts Explained Simply', ...sections, closing.content].join('\n\n') })
+    const result = { name: note.name, content: [opening.content, '## 2. Concepts Explained Simply', ...sections, closing.content].join('\n\n') }
+    onDocument(result)
+    await downloadStudyPdf(result)
   }
-}
-
-function RichLine({ text, as = 'p', className }) {
-  const ref = useRef(null)
-  useEffect(() => { renderRichText(ref.current, text, { inline: true }) }, [text])
-  return React.createElement(as, { ref, className })
-}
-
-function NotesContent({ content }) {
-  return <div className="study-notes-content">{content.split(/\r?\n/).filter(line => line.trim()).map((line, index) => {
-    const heading = line.match(/^(#{1,4})\s+(.+)/)
-    if (heading) return <RichLine key={index} as={'h' + Math.min(heading[1].length + 1, 5)} text={heading[2]}/>
-    const bullet = line.match(/^[-*]\s+(.+)/)
-    if (bullet) return <RichLine key={index} className="study-notes-bullet" text={bullet[1]}/>
-    return <RichLine key={index} text={line}/>
-  })}</div>
 }
 
 export default function StudyNotesScreen({ notes, results, busy, error, onGenerate, onBack }) {
-  function download(result) {
-    const blob = new Blob([result.content], { type: 'text/markdown;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = result.name.replace(/\.[^.]+$/, '') + '-simple-study-notes.md'
-    link.click()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
-  }
   return <section className="notes-chat-screen study-notes-screen">
     <div className="notes-chat-heading">
       <button className="ghost" onClick={onBack}><ArrowLeft size={16}/> Back to study setup</button>
       <div className="eyebrow">SIMPLIFIED STUDY NOTES</div>
       <h1>Understand it, <em>then remember it.</em></h1>
-      <p>Turn your uploaded material into clear explanations, examples, quick brain checks, and exam takeaways.</p>
+      <p>Turn your uploaded material into clear explanations, examples, and exam takeaways in a PDF.</p>
     </div>
     <div className="study-notes-toolbar">
       <div><BookOpen size={19}/><span>{notes.length} {notes.length === 1 ? 'document' : 'documents'} ready</span></div>
       <button className="primary" type="button" onClick={onGenerate} disabled={!!busy || !notes.length}>{busy ? <><LoaderCircle className="spin" size={17}/> {busy}</> : <><Sparkles size={17}/> {results.length ? 'Regenerate notes' : 'Make simplified notes'}</>}</button>
     </div>
     {error && <p className="study-notes-error" role="alert">{error}</p>}
-    {!results.length && !busy && <div className="study-notes-empty"><BookOpen size={27}/><p>Your chapter notes will appear here after generation. Longer documents are written section by section, so they may take a few minutes.</p></div>}
+    {!results.length && !busy && <div className="study-notes-empty"><BookOpen size={27}/><p>Your PDF will download when it is ready. Longer documents are written section by section, so they may take a few minutes.</p></div>}
     {results.map(result => <article className="study-notes-document" key={result.name}>
-      <div className="study-notes-document-head"><strong>{result.name}</strong><button className="secondary" type="button" onClick={() => download(result)}><Download size={15}/> Download .md</button></div>
-      <NotesContent content={result.content}/>
+      <div className="study-notes-document-head"><strong>{result.name} - PDF ready</strong><button className="secondary" type="button" onClick={() => downloadStudyPdf(result)}><Download size={15}/> Download PDF</button></div>
     </article>)}
-    <p className="study-notes-privacy">Original files stay on your device. Extracted text is sent to the AI to make these notes. Generated notes stay in this tab until refresh; download a copy to keep them.</p>
+    <p className="study-notes-privacy">Original files stay on your device. Extracted text is sent to the AI to make these notes. Your PDF downloads when generation finishes; you can download it again here until refresh.</p>
   </section>
 }
