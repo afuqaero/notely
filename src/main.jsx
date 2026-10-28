@@ -285,7 +285,7 @@ function App() {
       setGenerationEstimate(Math.ceil(target / batchSize) * 20)
       while (collected.length < target && attempts < target * 2) {
         attempts++
-        const requestCount = Math.max(3, Math.min(batchSize, target - collected.length))
+        const requestCount = Math.max(1, Math.min(batchSize, target - collected.length))
         setBusy('Making your quiz... ' + (collected.length + 1) + '-' + Math.min(target, collected.length + requestCount) + ' of ' + target)
         const response = await fetch('/api/quiz', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -302,7 +302,7 @@ function App() {
         const providerUnavailable = /RootsSys is having a server-side problem \(50[234]\)/i.test(providerError)
         if (!response.ok && requestTimedOut && timeoutRetryCount < 1) {
           timeoutRetryCount++
-          if (requestCount > 3) batchSize = Math.max(3, Math.floor(requestCount / 2))
+          if (requestCount > 1) batchSize = Math.max(1, Math.floor(requestCount / 2))
           attempts--
           continue
         }
@@ -314,14 +314,14 @@ function App() {
         }
         if (!response.ok && incompleteResult && providerRetryCount < 2) {
           providerRetryCount++
-          if (requestCount > 3) batchSize = Math.max(3, Math.floor(requestCount / 2))
+          if (requestCount > 1) batchSize = Math.max(1, Math.floor(requestCount / 2))
           attempts--
           continue
         }
         if (!response.ok || !Array.isArray(data.questions)) {
           if (response.status === 422 && ++emptyBatchCount < 3) continue
           if (collected.length) {
-            generationNotice = 'The next batch could not be completed. Keeping the ' + collected.length + ' questions already generated.'
+            generationNotice = (incompleteResult ? 'RootsSys cut off the next batch.' : 'The next batch could not be completed.') + ' Keeping the ' + collected.length + ' questions already generated.'
             break
           }
           throw new Error(data.error || 'The quiz service returned an incomplete response. Please try again.')
