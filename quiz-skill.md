@@ -10,6 +10,14 @@ Create varied multiple-choice questions that help a student prepare for an exam 
 - In **Explore more**, additional sound background questions may be marked as beyond the notes. Never label outside knowledge as directly supported by the notes.
 - Avoid repeating the same fact with different wording, including questions supplied as previously asked.
 
+## Plan chapter coverage before writing
+
+- First identify the chapter's learning outcomes, headings, and examinable subtopics. Use them as a coverage map for the requested quiz, rather than repeatedly drawing from one prominent section.
+- Spread questions across the supported subtopics. Compare the proposed questions with the previously asked questions and prioritize important topics and angles that have not yet been covered.
+- Include direct questions about definitions, purposes, steps, differences, advantages, disadvantages, and examples where the source supports them. For longer quizzes, revisit a topic through a genuinely different learning point rather than rewording an earlier question.
+- Use short scenarios for a minority of questions. A scenario should test application of an important idea, not replace a direct definition or comparison question.
+- Treat the chapter outline as a guide, not a fixed quota. If a topic or question type lacks reliable support in the documents, move to another supported point. In My notes only, keep the exact supporting excerpt for every answer.
+
 ## Mix question types in every batch
 
 For a batch of five, aim for one question from each type when the material supports it:
