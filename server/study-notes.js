@@ -28,7 +28,7 @@ export async function generateStudyNotes(input, key) {
       method: 'POST', headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: process.env.ROOTSYS_MODEL || 'deepseek-v4-flash', temperature: 0.4,
-        max_tokens: stage === 'section' ? 7000 : 4500,
+        max_tokens: stage === 'section' ? 3200 : 3000,
         ...(stage === 'summary' ? { response_format: { type: 'json_object' } } : {}),
         messages: [{ role: 'system', content: system }, { role: 'user', content: task }],
       }), signal: AbortSignal.timeout(155000),
@@ -49,6 +49,6 @@ export async function generateStudyNotes(input, key) {
     return { status: 200, body: { opening: result.opening.slice(0, 12000), closing: result.closing.slice(0, 22000) } }
   } catch (error) {
     console.error('Study notes generation failed:', error.message)
-    return { status: 502, body: { error: 'Could not finish these study notes. Please try again.' } }
+    return { status: 502, body: { error: error.name === 'TimeoutError' || error.name === 'AbortError' ? 'This study notes section timed out. Try again with a shorter document.' : 'Could not finish these study notes. Please try again.' } }
   }
 }
