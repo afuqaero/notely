@@ -58,10 +58,13 @@ export async function createStudyNotes(notes, onProgress, onDocument) {
       if (!result.content?.trim()) throw new Error('The AI returned an empty section. Please try again.')
       sections.push(result.content.trim())
     }
-    onProgress(`Finishing ${note.name}: chapter overview and recap`)
-    const summary = await requestNotes({ stage: 'summary', name: note.name, text: sections.join('\n\n').slice(0, 65000), index: 0, total: 1 })
-    if (!summary.opening || !summary.closing) throw new Error('The AI returned an incomplete recap. Please try again.')
-    onDocument({ name: note.name, content: [summary.opening, '## 2. Concepts Explained Simply', ...sections, summary.closing].join('\n\n') })
+    const concepts = sections.join('\n\n').slice(0, 65000)
+    onProgress(`Finishing ${note.name}: chapter overview`)
+    const opening = await requestNotes({ stage: 'opening', name: note.name, text: concepts, index: 0, total: 1 })
+    onProgress(`Finishing ${note.name}: exam recap`)
+    const closing = await requestNotes({ stage: 'closing', name: note.name, text: concepts, index: 0, total: 1 })
+    if (!opening.content || !closing.content) throw new Error('The AI returned an incomplete recap. Please try again.')
+    onDocument({ name: note.name, content: [opening.content, '## 2. Concepts Explained Simply', ...sections, closing.content].join('\n\n') })
   }
 }
 
