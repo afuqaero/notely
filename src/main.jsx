@@ -276,6 +276,7 @@ function App() {
       let attempts = 0
       let batchSize = total > 50000 ? 3 : 5
       let providerRetryCount = 0
+      let timeoutRetryCount = 0
       let generationNotice = ''
       while (collected.length < target && attempts < Math.ceil(target / 3) + 3) {
         attempts++
@@ -293,7 +294,13 @@ function App() {
         const providerError = data.error || ''
         const requestTimedOut = response.status === 504 || /timed out|timeout/i.test(providerError)
         const incompleteResult = /cut off|empty answer|incomplete response|incomplete JSON/i.test(providerError)
-        if (!response.ok && ((incompleteResult && providerRetryCount < 2) || (requestTimedOut && providerRetryCount < 1))) {
+        if (!response.ok && requestTimedOut && timeoutRetryCount < 1) {
+          timeoutRetryCount++
+          if (requestCount > 3) batchSize = Math.max(3, Math.floor(requestCount / 2))
+          attempts--
+          continue
+        }
+        if (!response.ok && incompleteResult && providerRetryCount < 2) {
           providerRetryCount++
           if (requestCount > 3) batchSize = Math.max(3, Math.floor(requestCount / 2))
           attempts--
@@ -308,6 +315,7 @@ function App() {
           throw new Error(data.error || 'The quiz service returned an incomplete response. Please try again.')
         }
         providerRetryCount = 0
+        timeoutRetryCount = 0
         const seen = new Set([...prior, ...collected.map(q => q.question)].map(q => q.toLowerCase().trim()))
         const fresh = data.questions.filter(q => !seen.has(q.question.toLowerCase().trim()))
         if (!fresh.length) break
