@@ -24,23 +24,32 @@ export async function generateStudyNotes(input, key) {
     ? `DOCUMENT: ${name}\nSECTION ${index + 1} OF ${total}\n\nExplain the important concepts in this short portion of the document in their original order. Group small supporting facts under 1-3 major concepts. Use ### headings for topics. For each major concept include What is it?, a small Example, Why it matters, How it works if relevant, Remember it easily, Exam Definition, and What to Remember for Exams. After every 2-3 concepts add a Quick Brain Check with 1-2 questions and answers immediately below. Use Feynman-style beginner explanations before academic terms. This is a portion of a longer chapter: do not write the chapter overview, common confusions, survival guide, or final recap here. If the text begins or ends mid-topic, explain only what this portion supports. Cover the source without repeating points.\n\nSOURCE TEXT:\n${text}`
     : `DOCUMENT: ${name}\n\nThese are the concept explanations generated in source order for the whole document. Return ONLY a JSON object with two strings: "opening" and "closing". The opening contains the document title, "1. The Big Picture", what the chapter is about in 3-5 simple sentences, why it matters in software development, and 3-5 learning outcomes. The closing contains "4. Common Confusions", "5. Exam Survival Guide", and "6. Final Chapter Recap" as a conversational 2-3 minute explanation. Base this synthesis on the supplied concepts, preserve the source's topic order, and label any outside support as Extra Explanation. Keep it spacious and exam-oriented.\n\nGENERATED CONCEPTS:\n${text}`
   try {
-    const response = await fetch('https://rootsys.cloud/v1/chat/completions', {
-      method: 'POST', headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: process.env.ROOTSYS_MODEL || 'deepseek-v4-flash', temperature: 0.4,
-        max_tokens: stage === 'section' ? 1800 : 2000,
-        ...(stage === 'summary' ? { response_format: { type: 'json_object' } } : {}),
-        messages: [{ role: 'system', content: system }, { role: 'user', content: task }],
-      }), signal: AbortSignal.timeout(155000),
-    })
-    if (!response.ok) {
-      console.error('Study notes provider returned', response.status)
-      return { status: 502, body: { error: 'The study notes AI could not respond. Please try again.' } }
+    const messages = [{ role: 'system', content: system }, { role: 'user', content: task }]
+    let raw = ''
+    let complete = false
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const response = await fetch('https://rootsys.cloud/v1/chat/completions', {
+        method: 'POST', headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: process.env.ROOTSYS_MODEL || 'deepseek-v4-flash', temperature: 0.4, max_tokens: 1800,
+          ...(stage === 'summary' && attempt === 0 ? { response_format: { type: 'json_object' } } : {}),
+          messages: attempt === 0 ? messages : [
+            ...messages, { role: 'assistant', content: raw },
+            { role: 'user', content: 'Continue from exactly where you stopped. Do not repeat earlier text. Finish the remaining content and then stop.' },
+          ],
+        }), signal: AbortSignal.timeout(45000),
+      })
+      if (!response.ok) {
+        console.error('Study notes provider returned', response.status)
+        return { status: 502, body: { error: 'The study notes AI could not respond. Please try again.' } }
+      }
+      const data = await response.json()
+      const choice = data.choices?.[0]
+      const part = typeof choice?.message?.content === 'string' ? choice.message.content : ''
+      if (part) raw += part
+      if (choice?.finish_reason !== 'length') { complete = true; break }
     }
-    const data = await response.json()
-    const choice = data.choices?.[0]
-    if (choice?.finish_reason === 'length') return { status: 502, body: { error: 'This section was cut off. Try again with shorter notes.' } }
-    const raw = typeof choice?.message?.content === 'string' ? choice.message.content : ''
+    if (!complete) return { status: 502, body: { error: 'This section was cut off after several attempts. Please try again.' } }
     if (!raw.trim()) throw new Error('Empty study notes response')
     if (stage === 'section') return { status: 200, body: { content: raw.trim().slice(0, 30000) } }
     const start = raw.indexOf('{'), end = raw.lastIndexOf('}')
