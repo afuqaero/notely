@@ -78,20 +78,19 @@ export async function generateQuiz(input, key) {
       if (start < 0 || end < start) throw new Error('No JSON object found')
       result = JSON.parse(raw.slice(start, end + 1))
     } catch { throw new Error('The quiz provider returned incomplete JSON. Please try again or choose fewer questions.') }
-    const names = new Set(parsed.map(n => n.name))
+    const evidenceSource = evidence => parsed.find(n => n.text.toLowerCase().includes(evidence.trim().replace(/\s+/g, ' ').toLowerCase()))
     const questions = (Array.isArray(result.questions) ? result.questions : []).filter(q => {
       if (!q || typeof q.question !== 'string' || !Array.isArray(q.options) || q.options.length !== 4 ||
           !q.options.every(o => typeof o === 'string' && o.trim()) || !Number.isInteger(q.correctAnswer) ||
-          q.correctAnswer < 0 || q.correctAnswer > 3 || typeof q.explanation !== 'string' || !Array.isArray(q.optionExplanations) || q.optionExplanations.length !== 4 || !q.optionExplanations.every(x => typeof x === 'string' && x.trim().length >= 20)) return false
+          q.correctAnswer < 0 || q.correctAnswer > 3 || typeof q.explanation !== 'string' || !Array.isArray(q.optionExplanations) || q.optionExplanations.length !== 4 || !q.optionExplanations.every(x => typeof x === 'string' && x.trim())) return false
       if (mode === 'notes' && q.origin !== 'notes') return false
-      if (q.origin === 'notes') return names.has(q.sourceName) && typeof q.evidence === 'string' && q.evidence.length > 0 &&
-        parsed.some(n => n.name === q.sourceName && n.text.toLowerCase().includes(q.evidence.trim().toLowerCase()))
+      if (q.origin === 'notes') return typeof q.evidence === 'string' && q.evidence.trim().length >= 12 && !!evidenceSource(q.evidence)
       return mode === 'explore' && q.origin === 'beyond'
     }).slice(0, count).map(q => ({
       question: q.question.slice(0, 400), options: q.options.map(o => o.slice(0, 240)),
       correctAnswer: q.correctAnswer, explanation: q.explanation.slice(0, 900),
       optionExplanations: q.optionExplanations.map(x => x.slice(0, 450)),
-      origin: q.origin, sourceName: q.origin === 'notes' ? q.sourceName : '',
+      origin: q.origin, sourceName: q.origin === 'notes' ? evidenceSource(q.evidence).name : '',
       evidence: q.origin === 'notes' ? q.evidence.slice(0, 160) : '',
     }))
     if (!questions.length) throw new Error('The model could not make supported questions from these notes. Try a text-rich document or Explore mode.')
