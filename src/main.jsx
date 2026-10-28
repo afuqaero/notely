@@ -274,9 +274,10 @@ function App() {
       const prior = more ? [...history, ...questions.map(q => q.question)] : [...history]
       const collected = []
       let attempts = 0
-      let batchSize = 10
+      let batchSize = total > 50000 ? 3 : 5
       let providerRetryCount = 0
-      while (collected.length < target && attempts < Math.ceil(target / 10) + 3) {
+      let generationNotice = ''
+      while (collected.length < target && attempts < Math.ceil(target / 3) + 3) {
         attempts++
         const requestCount = Math.max(3, Math.min(batchSize, target - collected.length))
         setBusy('Making your quiz... ' + (collected.length + 1) + '-' + Math.min(target, collected.length + requestCount) + ' of ' + target)
@@ -289,7 +290,10 @@ function App() {
           }),
         })
         const data = await response.json().catch(() => ({ error: 'The quiz service returned an empty or unreadable response. Please try again.' }))
-        if (!response.ok && /cut off|empty answer|incomplete response|incomplete JSON/i.test(data.error || '') && providerRetryCount < 2) {
+        const providerError = data.error || ''
+        const requestTimedOut = response.status === 504 || /timed out|timeout/i.test(providerError)
+        const incompleteResult = /cut off|empty answer|incomplete response|incomplete JSON/i.test(providerError)
+        if (!response.ok && ((incompleteResult && providerRetryCount < 2) || (requestTimedOut && providerRetryCount < 1))) {
           providerRetryCount++
           if (requestCount > 3) batchSize = Math.max(3, Math.floor(requestCount / 2))
           attempts--
@@ -297,6 +301,10 @@ function App() {
         }
         if (!response.ok || !Array.isArray(data.questions)) {
           if (collected.length && response.status === 422) break
+          if (collected.length && requestTimedOut) {
+            generationNotice = 'RootsSys timed out on the next batch. Keeping the ' + collected.length + ' questions already generated.'
+            break
+          }
           throw new Error(data.error || 'The quiz service returned an incomplete response. Please try again.')
         }
         providerRetryCount = 0
@@ -312,7 +320,8 @@ function App() {
       setIndex(0)
       setScreen('quiz')
       generated = true
-      if (collected.length < target) setError('Made ' + collected.length + ' supported questions. Add more material for a longer round.')
+      if (generationNotice) setError(generationNotice)
+      else if (collected.length < target) setError('Made ' + collected.length + ' supported questions. Add more material for a longer round.')
     } catch (e) { setError(e.message) }
     finally { setBusy('') }
     if (generated) requestAnimationFrame(() => document.querySelector('.quiz-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
