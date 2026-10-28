@@ -11,6 +11,7 @@ function printable(value) {
   return value.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/[`_]/g, '')
     .replace(/[\u2018\u2019]/g, "'").replace(/[\u201c\u201d]/g, '"')
     .replace(/[\u2013\u2014]/g, '-').replace(/\u2022/g, '-')
+    .replace(/[\u2192\u2794]/g, ' -> ')
     .replace(/[^\x20-\x7e\u00a0-\u00ff\n]/g, '')
 }
 
@@ -56,7 +57,7 @@ export async function buildStudyPdf(result) {
       pdf.setFont('helvetica', token.strong ? 'bold' : 'normal')
       pdf.setFontSize(size)
       const wordWidth = pdf.getTextWidth(token.word)
-      const space = lines.at(-1).length ? pdf.getTextWidth(' ') : 0
+      const space = lines.at(-1).length && !/^[,.;:!?)]/.test(token.word) ? pdf.getTextWidth(' ') : 0
       if (lineWidth + space + wordWidth > maxWidth && lines.at(-1).length) {
         lines.push([])
         lineWidth = 0
@@ -72,7 +73,7 @@ export async function buildStudyPdf(result) {
         pdf.setFont('helvetica', token.strong ? 'bold' : 'normal')
         pdf.setFontSize(size)
         pdf.setTextColor(...color)
-        if (x > margin + indent) x += pdf.getTextWidth(' ')
+        if (x > margin + indent && !/^[,.;:!?)]/.test(token.word)) x += pdf.getTextWidth(' ')
         pdf.text(token.word, x, y)
         x += pdf.getTextWidth(token.word)
       }
