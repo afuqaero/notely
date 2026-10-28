@@ -33,7 +33,7 @@ export async function generateQuiz(input, key) {
           { role: 'user', content: prompt },
         ],
       }),
-      signal: AbortSignal.timeout(55000),
+      signal: AbortSignal.timeout(165000),
     })
     if (!response.ok) {
       const providerBody = await response.text().catch(() => '')
@@ -98,7 +98,7 @@ export async function generateQuiz(input, key) {
     return { status: 200, body: { questions } }
   } catch (error) {
     const message = error.name === 'TimeoutError' || error.name === 'AbortError'
-      ? 'Quiz generation timed out while waiting for RootsSys (55-second limit). Try fewer questions or retry in a moment.'
+      ? 'Quiz generation timed out while waiting for RootsSys (165-second limit). Try fewer questions or retry in a moment.'
       : error.message === 'Unexpected end of JSON input'
         ? 'RootsSys returned incomplete JSON. Try fewer questions or retry.'
         : error.message || 'Unexpected error while generating the quiz.'
