@@ -10,9 +10,9 @@ export async function generateStudyNotes(input, key) {
   const text = clean(input?.text)
   const index = input?.index
   const total = input?.total
-  if (!name || !['section', 'summary'].includes(stage) || !Number.isInteger(index) || !Number.isInteger(total) || index < 0 || total < 1 || index >= total ||
+  if (!name || !['section', 'opening', 'closing'].includes(stage) || !Number.isInteger(index) || !Number.isInteger(total) || index < 0 || total < 1 || index >= total ||
       (stage === 'section' && (text.length < 80 || text.length > 10000)) ||
-      (stage === 'summary' && (text.length < 80 || text.length > 65000))) {
+      (stage !== 'section' && (text.length < 80 || text.length > 65000))) {
     return { status: 400, body: { error: 'Invalid study notes request.' } }
   }
   const system = [
@@ -22,7 +22,9 @@ export async function generateStudyNotes(input, key) {
   ].join('\n\n')
   const task = stage === 'section'
     ? `DOCUMENT: ${name}\nSECTION ${index + 1} OF ${total}\n\nAim for 350-650 words only when this portion contains substantive concepts; write much less for an outline. Explain only the 1-2 major concepts that are taught here, in source order; group supporting facts under them. Do not turn the chapter title, learning outcomes, or a bare list of future topics into full lessons. Use ### headings for concepts. For each major concept give brief What is it?, Example, Why it matters, How it works if relevant, Remember it easily, Exam Definition, and What to Remember for Exams explanations. After 2-3 concepts add a brief Quick Brain Check with answer. Use Feynman-style beginner explanations before academic terms. Do not write a chapter overview, common confusions, survival guide, or final recap here. If the source begins or ends mid-topic, explain only supported details. No repeated points or filler.\n\nSOURCE TEXT:\n${text}`
-    : `DOCUMENT: ${name}\n\nThese are the concept explanations generated in source order for the whole document. Return ONLY a JSON object with two strings: "opening" and "closing". The opening contains the document title, "1. The Big Picture", what the chapter is about in 3-5 simple sentences, why it matters in software development, and 3-5 learning outcomes. The closing contains "4. Common Confusions", "5. Exam Survival Guide", and "6. Final Chapter Recap" as a conversational 2-3 minute explanation. Base this synthesis on the supplied concepts, preserve the source's topic order, and label any outside support as Extra Explanation. Keep it spacious and exam-oriented.\n\nGENERATED CONCEPTS:\n${text}`
+    : stage === 'opening'
+      ? `DOCUMENT: ${name}\n\nThese are the concept explanations for the whole chapter in source order. Write only the chapter title and "## 1. The Big Picture": what it is about in 3-5 simple sentences, why it matters in real software development, and 3-5 clear learning outcomes. Do not write concept lessons or the final recap. Use short, spacious Markdown.\n\nGENERATED CONCEPTS:\n${text}`
+      : `DOCUMENT: ${name}\n\nThese are the concept explanations for the whole chapter in source order. Write only "## 4. Common Confusions", "## 5. Exam Survival Guide", and "## 6. Final Chapter Recap". Compare easily confused concepts, list exam definitions and distinctions without a crowded table, and end with a conversational 2-3 minute explanation of the whole chapter. Keep the source order and clearly label extra explanations. Use short, spacious Markdown.\n\nGENERATED CONCEPTS:\n${text}`
   try {
     const messages = [{ role: 'system', content: system }, { role: 'user', content: task }]
     let raw = ''
@@ -32,7 +34,6 @@ export async function generateStudyNotes(input, key) {
         method: 'POST', headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: process.env.ROOTSYS_MODEL || 'deepseek-v4-flash', temperature: 0.4, max_tokens: 1800,
-          ...(stage === 'summary' && attempt === 0 ? { response_format: { type: 'json_object' } } : {}),
           messages: attempt === 0 ? messages : [
             ...messages, { role: 'assistant', content: raw },
             { role: 'user', content: 'Continue from exactly where you stopped. Do not repeat earlier text. Finish the remaining content and then stop.' },
@@ -51,11 +52,7 @@ export async function generateStudyNotes(input, key) {
     }
     if (!complete) return { status: 502, body: { error: 'This section was cut off after several attempts. Please try again.' } }
     if (!raw.trim()) throw new Error('Empty study notes response')
-    if (stage === 'section') return { status: 200, body: { content: raw.trim().slice(0, 30000) } }
-    const start = raw.indexOf('{'), end = raw.lastIndexOf('}')
-    const result = JSON.parse(raw.slice(start, end + 1))
-    if (!clean(result.opening) || !clean(result.closing)) throw new Error('Incomplete study notes summary')
-    return { status: 200, body: { opening: result.opening.slice(0, 12000), closing: result.closing.slice(0, 22000) } }
+    return { status: 200, body: { content: raw.trim().slice(0, stage === 'section' ? 30000 : 22000) } }
   } catch (error) {
     console.error('Study notes generation failed:', error.message)
     return { status: 502, body: { error: error.name === 'TimeoutError' || error.name === 'AbortError' ? 'This study notes section timed out. Try again with a shorter document.' : 'Could not finish these study notes. Please try again.' } }
