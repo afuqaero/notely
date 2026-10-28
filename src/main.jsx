@@ -278,10 +278,12 @@ function App() {
       let batchSize = total > 50000 ? 3 : 5
       let providerRetryCount = 0
       let timeoutRetryCount = 0
+      let unavailableRetryCount = 0
+      let emptyBatchCount = 0
       let generationNotice = ''
       const generationStarted = performance.now()
       setGenerationEstimate(Math.ceil(target / batchSize) * 20)
-      while (collected.length < target && attempts < target) {
+      while (collected.length < target && attempts < target * 2) {
         attempts++
         const requestCount = Math.max(3, Math.min(batchSize, target - collected.length))
         setBusy('Making your quiz... ' + (collected.length + 1) + '-' + Math.min(target, collected.length + requestCount) + ' of ' + target)
@@ -297,9 +299,16 @@ function App() {
         const providerError = data.error || ''
         const requestTimedOut = response.status === 504 || /timed out|timeout/i.test(providerError)
         const incompleteResult = /cut off|empty answer|incomplete response|incomplete JSON/i.test(providerError)
+        const providerUnavailable = /RootsSys is having a server-side problem \(50[234]\)/i.test(providerError)
         if (!response.ok && requestTimedOut && timeoutRetryCount < 1) {
           timeoutRetryCount++
           if (requestCount > 3) batchSize = Math.max(3, Math.floor(requestCount / 2))
+          attempts--
+          continue
+        }
+        if (!response.ok && providerUnavailable && unavailableRetryCount < 1) {
+          unavailableRetryCount++
+          await new Promise(resolve => setTimeout(resolve, 1500))
           attempts--
           continue
         }
@@ -310,18 +319,23 @@ function App() {
           continue
         }
         if (!response.ok || !Array.isArray(data.questions)) {
-          if (collected.length && response.status === 422) break
-          if (collected.length && requestTimedOut) {
-            generationNotice = 'RootsSys timed out on the next batch. Keeping the ' + collected.length + ' questions already generated.'
+          if (response.status === 422 && ++emptyBatchCount < 3) continue
+          if (collected.length) {
+            generationNotice = 'The next batch could not be completed. Keeping the ' + collected.length + ' questions already generated.'
             break
           }
           throw new Error(data.error || 'The quiz service returned an incomplete response. Please try again.')
         }
         providerRetryCount = 0
         timeoutRetryCount = 0
+        unavailableRetryCount = 0
         const seen = new Set([...prior, ...collected.map(q => q.question)].map(q => q.toLowerCase().trim()))
         const fresh = data.questions.filter(q => !seen.has(q.question.toLowerCase().trim()))
-        if (!fresh.length) break
+        if (!fresh.length) {
+          if (++emptyBatchCount < 3) continue
+          break
+        }
+        emptyBatchCount = 0
         collected.push(...fresh.slice(0, target - collected.length))
         setGenerationEstimate(Math.ceil(((performance.now() - generationStarted) / 1000) / collected.length * (target - collected.length)))
       }
