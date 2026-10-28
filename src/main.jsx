@@ -223,6 +223,7 @@ function App() {
   const [screen, setScreen] = useState('setup')
   const [notesChatReturnScreen, setNotesChatReturnScreen] = useState('setup')
   const [busy, setBusy] = useState('')
+  const [generationEstimate, setGenerationEstimate] = useState(null)
   const [error, setError] = useState('')
   const [questions, setQuestions] = useState([])
   const [index, setIndex] = useState(0)
@@ -278,6 +279,8 @@ function App() {
       let providerRetryCount = 0
       let timeoutRetryCount = 0
       let generationNotice = ''
+      const generationStarted = performance.now()
+      setGenerationEstimate(Math.ceil(target / batchSize) * 20)
       while (collected.length < target && attempts < Math.ceil(target / 3) + 3) {
         attempts++
         const requestCount = Math.max(3, Math.min(batchSize, target - collected.length))
@@ -320,6 +323,7 @@ function App() {
         const fresh = data.questions.filter(q => !seen.has(q.question.toLowerCase().trim()))
         if (!fresh.length) break
         collected.push(...fresh.slice(0, target - collected.length))
+        setGenerationEstimate(Math.ceil(((performance.now() - generationStarted) / 1000) / collected.length * (target - collected.length)))
       }
       if (!collected.length) throw new Error('No verifiable questions could be generated from these notes.')
       setHistory(h => [...h, ...questions.map(q => q.question)].slice(-80))
@@ -331,7 +335,7 @@ function App() {
       if (generationNotice) setError(generationNotice)
       else if (collected.length < target) setError('Made ' + collected.length + ' supported questions. Add more material for a longer round.')
     } catch (e) { setError(e.message) }
-    finally { setBusy('') }
+    finally { setBusy(''); setGenerationEstimate(null) }
     if (generated) requestAnimationFrame(() => document.querySelector('.quiz-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   }
   function answer(choice) {
@@ -369,7 +373,7 @@ function App() {
 </div>}<div className="quiz-actions"><span>{selected === undefined ? 'Pick an answer to see why it works.' : 'Nice work. Keep the momentum going!'}</span><button className="primary next-button" disabled={selected === undefined} onClick={next}>{index === questions.length - 1 ? 'See results' : 'Next question'} <ArrowRight size={18}/></button></div></div><aside className="study-aside"><div className="mini-card"><div className="mini-icon"><Lightbulb size={20}/></div><h3>Little reminder</h3><p>Pause and think it through. Even when you guess wrong, the explanation helps it stick.</p></div><div className="mini-card stats"><span>YOUR PROGRESS</span><strong>{index + 1}<small> / {questions.length}</small></strong><div className="tiny-bar"><span style={{ width: progress + '%' }}/></div><p>{score} correct so far</p></div></aside></div><StudyBot question={current} index={index} total={questions.length} answer={selected} notes={available}/></section>}
       {screen === 'results' && <section className="results"><div className="result-graphic"><span>✦</span><div><Sparkles size={36}/></div><span>✳</span></div><div className="eyebrow">ROUND COMPLETE</div><h1>Look at you, <em>learning!</em></h1><p className="result-intro">Every answer helped make the topic a little clearer.</p><div className="score-card"><strong>{score}<span> / {questions.length}</span></strong><div><b>{score === questions.length ? 'Perfect round!' : score >= questions.length * .7 ? 'Nice work!' : 'Keep going, you’ve got this.'}</b><p>Questions answered correctly</p></div></div><div className="results-actions"><button className="primary" onClick={() => generate(true)} disabled={!!busy}>{busy ? <><LoaderCircle className="spin" size={18}/> Making more...</> : <>Another round <RotateCcw size={18}/></>}</button><button className="secondary" onClick={() => { setScreen('setup'); setError('') }}>Adjust settings</button></div><div className="review"><h2>Review this round</h2>{questions.map((q, i) => <details key={i}><summary><span className={'review-icon ' + (answers[i] === q.correctAnswer ? 'yes' : 'no')}>{answers[i] === q.correctAnswer ? <Check size={16}/> : <X size={16}/>}</span><RichText text={q.question}/><ChevronDown size={17}/></summary><div className="review-body"><p><b>Correct answer:</b> <RichText text={q.options[q.correctAnswer]}/></p><p><RichText text={q.explanation}/></p></div></details>)}</div><button className="reset" onClick={reset}><Trash2 size={15}/> Clear notes and start fresh</button></section>}
       {error && <div className="error-toast" role="alert"><CircleHelp size={19}/><span>{error}</span><button onClick={() => setError('')} aria-label="Dismiss error"><X size={17}/></button></div>}
-    </main>      {notes.length > 0 && screen !== 'notes-chat' && <button className={'mobile-notes-chat-launcher ' + (screen === 'quiz' ? 'during-quiz' : '')} type="button" aria-label="Open chat with your notes" onClick={() => { setNotesChatReturnScreen(screen); setScreen('notes-chat') }}><MessagesSquare size={19}/> Notes chat</button>}{busy.startsWith('Making your quiz') && <div className="generating-overlay" role="dialog" aria-modal="true" aria-labelledby="generating-title"><div className="generating-card"><div className="generating-orb"><Sparkles size={25}/></div><div className="generating-spinner"/><div className="eyebrow">YOUR NOTES ARE IN GOOD HANDS</div><h2 id="generating-title">Making your quiz...</h2><p>{busy}</p><div className="generating-dots"><i/><i/><i/></div></div></div>}<footer><div className="shell footer-inner"><span className="brand footer-brand"><span className="brand-mark"><BookOpen size={17}/></span>notely<span className="brand-dot">.</span></span><span>Make sense of it, one question at a time.</span><span>Built for better learning ✳</span></div></footer>
+    </main>      {notes.length > 0 && screen !== 'notes-chat' && <button className={'mobile-notes-chat-launcher ' + (screen === 'quiz' ? 'during-quiz' : '')} type="button" aria-label="Open chat with your notes" onClick={() => { setNotesChatReturnScreen(screen); setScreen('notes-chat') }}><MessagesSquare size={19}/> Notes chat</button>}{busy.startsWith('Making your quiz') && <div className="generating-overlay" role="dialog" aria-modal="true" aria-labelledby="generating-title"><div className="generating-card"><div className="generating-orb"><Sparkles size={25}/></div><div className="generating-spinner"/><div className="eyebrow">YOUR NOTES ARE IN GOOD HANDS</div><h2 id="generating-title">Making your quiz...</h2><p>{busy}</p>{generationEstimate !== null && <p>Estimated time remaining: {generationEstimate < 60 ? 'under a minute' : 'about ' + Math.ceil(generationEstimate / 60) + ' min'}</p>}<div className="generating-dots"><i/><i/><i/></div></div></div>}<footer><div className="shell footer-inner"><span className="brand footer-brand"><span className="brand-mark"><BookOpen size={17}/></span>notely<span className="brand-dot">.</span></span><span>Make sense of it, one question at a time.</span><span>Built for better learning ✳</span></div></footer>
   </div>
 }
 createRoot(document.getElementById('root')).render(<App />)
