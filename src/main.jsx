@@ -195,7 +195,7 @@ function NotesChatScreen({ notes, messages, setMessages, onBack, onNewChat, back
   return <section className="notes-chat-screen">
     <div className="notes-chat-heading">
       <button className="ghost" onClick={onBack}><ArrowLeft size={16}/> {backLabel}</button>
-      <div className="eyebrow"><span className="eyebrow-star">?</span> YOUR NOTES CHAT</div>
+      <div className="eyebrow">YOUR NOTES CHAT</div>
       <h1>Ask <em>anything</em> about your notes.</h1>
       <p>A separate chat for exploring the material. It remembers this conversation while you switch between study modes.</p>
     </div>
