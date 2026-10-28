@@ -28,3 +28,5 @@
   .notes-chat-heading>.ghost{font-size:12px}
 }
 
+
+.notes-chat-entry:disabled{opacity:.62;cursor:not-allowed}.notes-chat-entry:disabled:hover{transform:none;border-color:#e6dff1;background:#fbf9fe}
