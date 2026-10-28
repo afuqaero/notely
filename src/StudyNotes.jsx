@@ -17,6 +17,14 @@ function splitSource(text) {
   return chunks
 }
 
+function sourceForStudy(note) {
+  const raw = note.studyText || note.text
+  if (!note.name.toLowerCase().endsWith('.pdf')) return raw.trim()
+  const pages = raw.split(/\n+/).map(page => page.trim()).filter(Boolean)
+  const outcomes = pages.findIndex((page, index) => index < 3 && page.length < 1500 && /after this lecture|learning outcomes|learning objectives|by the end of this (chapter|lecture)/i.test(page))
+  return (outcomes >= 0 && outcomes < pages.length - 1 ? pages.slice(outcomes + 1) : pages).join('\n\n').trim()
+}
+
 async function requestNotes(body) {
   const response = await fetch('/api/study-notes', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
@@ -27,11 +35,12 @@ async function requestNotes(body) {
 }
 
 export async function createStudyNotes(notes, onProgress, onDocument) {
-  const totalLength = notes.reduce((sum, note) => sum + note.text.length, 0)
+  const sources = notes.map(sourceForStudy)
+  const totalLength = sources.reduce((sum, text) => sum + text.length, 0)
   if (totalLength > 100000) throw new Error('These notes contain over 100,000 characters. Remove a file to shorten them for now.')
   for (let documentIndex = 0; documentIndex < notes.length; documentIndex++) {
     const note = notes[documentIndex]
-    const chunks = splitSource(note.text)
+    const chunks = splitSource(sources[documentIndex])
     const sections = []
     for (let index = 0; index < chunks.length; index++) {
       onProgress(`Reading ${note.name}: section ${index + 1} of ${chunks.length}`)
