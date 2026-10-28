@@ -259,9 +259,10 @@ function App() {
     try {
       for (const file of Array.from(files).slice(0, 12)) {
         if (existing.has(file.name)) continue
-        const text = normalize(await extract(file))
+        const extracted = await extract(file)
+        const text = normalize(extracted)
         if (text.length < 80) throw new Error(file.name + ' has too little readable text. Scanned PDFs need OCR first.')
-        added.push({ name: file.name, text, size: file.size })
+        added.push({ name: file.name, text, studyText: extracted, size: file.size })
         existing.add(file.name)
       }
       setNotes(n => [...n, ...added].slice(0, 12))
