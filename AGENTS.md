@@ -26,3 +26,7 @@
 
 - Review the diff and confirm every changed file and rule is necessary for the requested issue.
 - Call out any necessary change outside the affected section before making it; do not silently broaden the scope.
+## Deployment
+
+- Before pushing or deploying this repository, read .agents/skills/notely-deploy/SKILL.md. Verify the exact pushed source, Vercel Ready status, and live behavior before reporting completion.
+
