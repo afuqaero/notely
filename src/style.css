@@ -30,3 +30,9 @@
 
 
 .notes-chat-entry:disabled{opacity:.62;cursor:not-allowed}.notes-chat-entry:disabled:hover{transform:none;border-color:#e6dff1;background:#fbf9fe}
+.quiz-card-nav{position:sticky;top:8px;z-index:4;display:flex;justify-content:space-between;gap:10px;padding:8px 0;margin:-12px 0 18px;background:#fff;border-bottom:1px solid #eef0ed}
+.quiz-nav-button{min-height:40px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 13px;border:1px solid #e3dcef;border-radius:9px;background:#fff;color:#6c50b8;font-size:12px;font-weight:800;cursor:pointer}
+.quiz-nav-button:last-child{background:#795bd0;border-color:#795bd0;color:#fff}
+.quiz-nav-button:hover:not(:disabled){border-color:#795bd0;box-shadow:0 3px 10px #795bd025}
+.quiz-nav-button:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+@media(max-width:700px){.quiz-card-nav{top:6px;margin:-10px 0 15px}.quiz-nav-button{min-height:40px;padding:0 10px;font-size:11px}}
