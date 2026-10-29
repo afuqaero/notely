@@ -289,7 +289,7 @@ function App() {
       const total = available.reduce((n, doc) => n + doc.text.length, 0)
       if (total > 100000) throw new Error('These notes contain over 100,000 characters. Remove a file to shorten the notes for now.')
       const target = Number(settings.count)
-      const prior = more ? [...history, ...questions.map(q => q.question)] : [...history]
+      const prior = more ? [...history, ...questions.map(q => ({ question: q.question, learningPoint: q.learningPoint }))] : [...history]
       const collected = []
       let attempts = 0
       let batchSize = total > 50000 ? 3 : 5
@@ -309,7 +309,7 @@ function App() {
           body: JSON.stringify({
             notes: available.map(({ name, text }) => ({ name, text })),
             mode: settings.mode, count: requestCount, difficulty: settings.difficulty,
-            previousQuestions: [...prior.map(question => ({ question })), ...collected.map(q => ({ question: q.question, learningPoint: q.learningPoint }))],
+            previousQuestions: [...prior.map(item => typeof item === 'string' ? { question: item } : item), ...collected.map(q => ({ question: q.question, learningPoint: q.learningPoint }))],
           }),
         })
         const data = await response.json().catch(() => ({ error: 'The quiz service returned an empty or unreadable response. Please try again.' }))
@@ -357,7 +357,7 @@ function App() {
         setGenerationEstimate(Math.ceil(((performance.now() - generationStarted) / 1000) / collected.length * (target - collected.length)))
       }
       if (!collected.length) throw new Error('No verifiable questions could be generated from these notes.')
-      setHistory(h => [...h, ...questions.map(q => q.question)].slice(-80))
+      setHistory(h => [...h, ...questions.map(q => ({ question: q.question, learningPoint: q.learningPoint }))].slice(-80))
       setQuestions(collected)
       setAnswers([])
       setIndex(0)
