@@ -44,3 +44,4 @@
 .tutor-bubble .rich-table tbody tr:nth-child(even),.notes-chat-message .rich-table tbody tr:nth-child(even){background:#f8f5fc}
 .tutor-bubble .rich-table tr>*:last-child,.notes-chat-message .rich-table tr>*:last-child{border-right:0}
 .tutor-bubble .rich-table tbody tr:last-child>*,.notes-chat-message .rich-table tbody tr:last-child>*{border-bottom:0}
+.tutor-bubble .rich-text h3,.notes-chat-message .rich-text h3{margin:0 0 8px;font-size:13px;line-height:1.4;color:#5c43a4}
