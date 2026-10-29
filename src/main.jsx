@@ -309,7 +309,7 @@ function App() {
           body: JSON.stringify({
             notes: available.map(({ name, text }) => ({ name, text })),
             mode: settings.mode, count: requestCount, difficulty: settings.difficulty,
-            previousQuestions: [...prior, ...collected.map(q => q.question)],
+            previousQuestions: [...prior.map(question => ({ question })), ...collected.map(q => ({ question: q.question, learningPoint: q.learningPoint }))],
           }),
         })
         const data = await response.json().catch(() => ({ error: 'The quiz service returned an empty or unreadable response. Please try again.' }))
