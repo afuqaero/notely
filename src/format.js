@@ -94,6 +94,14 @@ export function renderRichText(element, raw, { inline = false } = {}) {
     }
     for (let index = 0; index < lines.length; index++) {
       if (!lines[index].trim()) { flush(); continue }
+      const heading = lines[index].match(/^#{1,4}\s+(.+)/)
+      if (heading) {
+        flush()
+        const title = document.createElement('h3')
+        appendInline(title, heading[1])
+        element.append(title)
+        continue
+      }
       const header = tableCells(lines[index])
       const separator = tableCells(lines[index + 1])
       if (header?.length >= 2 && separator?.length === header.length && separator.every(cell => /^:?-{3,}:?$/.test(cell))) {
