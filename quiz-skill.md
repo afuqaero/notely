@@ -9,6 +9,7 @@ Create varied multiple-choice questions that help a student prepare for an exam 
 - In **My notes only**, every question and correct answer must be supported by a verbatim excerpt from the uploaded document. If a category is absent, use another supported category; never invent a definition, benefit, or limitation to fill a quota.
 - In **Explore more**, additional sound background questions may be marked as beyond the notes. Never label outside knowledge as directly supported by the notes.
 - Avoid repeating the same fact with different wording, including questions supplied as previously asked.
+- Before returning a batch, compare both the question and its correct idea against all previous questions and the new questions in that batch. Replace a paraphrase or repeated fact with a different learning point; changing a character's name or the answer order does not make a question new.
 
 ## Plan chapter coverage before writing
 
@@ -29,6 +30,8 @@ For a batch of five, aim for one question from each type when the material suppo
 5. **Application:** Apply an idea to a short practical example or case study.
 
 For smaller batches, prioritize the first four types and use a scenario only if it tests an important point not already asked. For a larger batch, repeat the mix. Do not turn direct questions into case studies just to make them sound practical. Avoid successive questions with the same opening or structure.
+
+When earlier batches contain many scenarios, prioritize direct definitions, mechanisms, comparisons, and advantages or limitations until the full round is balanced. Challenge difficulty can ask a hard distinction or trade-off directly; it does not require another case study. Prefer a new concept or a new examinable angle over a cosmetic rewrite of an old question.
 
 Treat this as a coverage goal, not a reason to invent unsupported material. When a document has no valid comparison or advantage, use a different direct question from the document instead.
 
