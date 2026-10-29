@@ -36,3 +36,11 @@
 .quiz-nav-button:hover:not(:disabled){border-color:#795bd0;box-shadow:0 3px 10px #795bd025}
 .quiz-nav-button:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
 @media(max-width:700px){.quiz-card-nav{top:6px;margin:-10px 0 15px}.quiz-nav-button{min-height:40px;padding:0 10px;font-size:11px}}
+.tutor-bubble,.notes-chat-message{min-width:0}
+.tutor-bubble .rich-table-wrap,.notes-chat-message .rich-table-wrap{max-width:100%;overflow-x:auto;margin:10px 0;border:1px solid #e6def1;border-radius:9px;background:#fff;scrollbar-width:thin;scrollbar-color:#b9a8dc transparent}
+.tutor-bubble .rich-table,.notes-chat-message .rich-table{width:100%;min-width:360px;border-collapse:collapse;color:#40394c;font-size:11px;line-height:1.45}
+.tutor-bubble .rich-table th,.tutor-bubble .rich-table td,.notes-chat-message .rich-table th,.notes-chat-message .rich-table td{padding:8px 10px;text-align:left;vertical-align:top;border-right:1px solid #e9e3f1;border-bottom:1px solid #e9e3f1;overflow-wrap:normal;word-break:normal}
+.tutor-bubble .rich-table th,.notes-chat-message .rich-table th{background:#7659c8;color:#fff;font-weight:800}
+.tutor-bubble .rich-table tbody tr:nth-child(even),.notes-chat-message .rich-table tbody tr:nth-child(even){background:#f8f5fc}
+.tutor-bubble .rich-table tr>*:last-child,.notes-chat-message .rich-table tr>*:last-child{border-right:0}
+.tutor-bubble .rich-table tbody tr:last-child>*,.notes-chat-message .rich-table tbody tr:last-child>*{border-bottom:0}
