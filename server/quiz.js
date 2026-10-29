@@ -27,10 +27,10 @@ const isCloseRepeat = (question, other) => {
 }
 const isClosePoint = (point, other) => {
   const a = questionTokens(point), b = questionTokens(other)
-  if (!a.size || !b.size) return false
+  if (a.size < 2 || b.size < 2) return false
   const common = [...a].filter(word => b.has(word)).length
   const overlap = common / Math.max(a.size, b.size)
-  return overlap >= 0.65
+  return (a.size === b.size && common === a.size) || (common >= 3 && overlap >= 0.85)
 }
 const batchTypes = (count, previous) => {
   const recent = previous.slice(-40)
@@ -150,7 +150,7 @@ export async function generateQuiz(input, key) {
     for (const candidate of candidates) {
       if (prior.some(old => isCloseRepeat(candidate.question, old.question) ||
           (old.learningPoint && isClosePoint(candidate.learningPoint, old.learningPoint)) ||
-          isClosePoint(candidate.learningPoint, old.question)) ||
+          (!old.learningPoint && isCloseRepeat(candidate.learningPoint, old.question))) ||
           questions.some(old => isCloseRepeat(candidate.question, old.question) || isClosePoint(candidate.learningPoint, old.learningPoint))) continue
       if (questionType(candidate.question) === 'application' &&
           priorQuestions.filter(old => questionType(old) === 'application').length + questions.filter(old => questionType(old.question) === 'application').length >= Math.ceil((priorQuestions.length + questions.length + 1) / 5)) continue

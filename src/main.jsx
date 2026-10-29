@@ -336,7 +336,10 @@ function App() {
           continue
         }
         if (!response.ok || !Array.isArray(data.questions)) {
-          if (response.status === 422 && ++emptyBatchCount < 3) continue
+          if (response.status === 422 && ++emptyBatchCount < 6) {
+            if (requestCount > 1) batchSize = Math.max(1, Math.floor(requestCount / 2))
+            continue
+          }
           if (collected.length) {
             generationNotice = (incompleteResult ? 'RootsSys cut off the next batch.' : 'The next batch could not be completed.') + ' Keeping the ' + collected.length + ' questions already generated.'
             break
