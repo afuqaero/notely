@@ -13,6 +13,44 @@ function appendInline(parent, line) {
   if (cursor < line.length) parent.append(document.createTextNode(line.slice(cursor)))
 }
 
+function tableCells(line) {
+  if (!line?.includes('|')) return null
+  const source = line.trim().replace(/^\|/, '').replace(/\|$/, '')
+  const cells = []
+  let cell = ''
+  for (let index = 0; index < source.length; index++) {
+    if (source[index] === '\\' && source[index + 1] === '|') { cell += '|'; index++ }
+    else if (source[index] === '|') { cells.push(cell.trim()); cell = '' }
+    else cell += source[index]
+  }
+  cells.push(cell.trim())
+  return cells
+}
+
+function appendTable(parent, header, rows) {
+  const wrapper = document.createElement('div')
+  wrapper.className = 'rich-table-wrap'
+  wrapper.tabIndex = 0
+  wrapper.setAttribute('role', 'region')
+  wrapper.setAttribute('aria-label', 'Study table')
+  const table = document.createElement('table')
+  table.className = 'rich-table'
+  const head = table.createTHead().insertRow()
+  header.forEach(value => {
+    const cell = document.createElement('th')
+    cell.scope = 'col'
+    appendInline(cell, value)
+    head.append(cell)
+  })
+  const body = table.createTBody()
+  rows.forEach(row => {
+    const line = body.insertRow()
+    row.forEach(value => appendInline(line.insertCell(), value))
+  })
+  wrapper.append(table)
+  parent.append(wrapper)
+}
+
 function applyMath(element) {
   if (typeof window.renderMathInElement !== 'function') return
   try {
@@ -42,14 +80,36 @@ export function renderRichText(element, raw, { inline = false } = {}) {
       appendInline(element, line)
     })
   } else {
-    for (const paragraph of value.split(/\n\s*\n/)) {
+    const lines = value.split(/\r?\n/)
+    let paragraph = []
+    const flush = () => {
+      if (!paragraph.length) return
       const block = document.createElement('p')
-      paragraph.split('\n').forEach((line, index) => {
+      paragraph.forEach((line, index) => {
         if (index) block.append(document.createElement('br'))
         appendInline(block, line)
       })
       element.append(block)
+      paragraph = []
     }
+    for (let index = 0; index < lines.length; index++) {
+      if (!lines[index].trim()) { flush(); continue }
+      const header = tableCells(lines[index])
+      const separator = tableCells(lines[index + 1])
+      if (header?.length >= 2 && separator?.length === header.length && separator.every(cell => /^:?-{3,}:?$/.test(cell))) {
+        flush()
+        const rows = []
+        index++
+        while (index + 1 < lines.length) {
+          const row = tableCells(lines[index + 1])
+          if (row?.length !== header.length || !lines[index + 1].trim()) break
+          rows.push(row)
+          index++
+        }
+        appendTable(element, header, rows)
+      } else paragraph.push(lines[index])
+    }
+    flush()
   }
   applyMath(element)
 }
@@ -59,4 +119,3 @@ window.addEventListener('notely-math-ready', () => {
     if (element.__notelyRich) renderRichText(element, element.__notelyRich.value, { inline: element.__notelyRich.inline })
   })
 })
-
