@@ -53,12 +53,21 @@ export async function generateQuiz(input, key) {
   const parsed = notes.map(n => ({ name: clean(n?.name).slice(0, 120), text: clean(n?.text).slice(0, 75000) }))
   if (parsed.some(n => !n.name || n.text.length < 80) || parsed.reduce((sum, n) => sum + n.text.length, 0) > 100000)
     return { status: 400, body: { error: 'Notes are empty or too long. Use up to 100,000 characters of extracted text.' } }
-  const source = parsed.map(n => 'DOCUMENT: ' + n.name + '\n' + n.text).join('\n\n---\n\n')
   const prior = Array.isArray(previousQuestions) ? previousQuestions.slice(-80).map(v => typeof v === 'string'
     ? { question: v.slice(0, 400), learningPoint: '' }
     : v && typeof v.question === 'string'
       ? { question: v.question.slice(0, 400), learningPoint: clean(v.learningPoint).slice(0, 160) }
       : null).filter(Boolean) : []
+  const windows = parsed.flatMap(n => {
+    if (n.text.length <= 24000) return [{ name: n.name, text: n.text }]
+    const parts = []
+    for (let start = 0; start < n.text.length; start += 22000)
+      parts.push({ name: n.name, text: n.text.slice(start, start + 24000) })
+    return parts
+  })
+  const sourceParts = parsed.reduce((sum, n) => sum + n.text.length, 0) <= 30000
+    ? windows : [windows[Math.floor(prior.length / count) % windows.length]]
+  const source = sourceParts.map(n => 'DOCUMENT: ' + n.name + '\n' + n.text).join('\n\n---\n\n')
   const priorQuestions = prior.map(v => v.question)
   const exclusions = prior.slice(-60).map(v => ({ question: v.question.slice(0, 180), learningPoint: v.learningPoint }))
   const types = batchTypes(count, priorQuestions)
@@ -131,7 +140,7 @@ export async function generateQuiz(input, key) {
       if (start < 0 || end < start) throw new Error('No JSON object found')
       result = JSON.parse(raw.slice(start, end + 1))
     } catch { throw new Error('The quiz provider returned incomplete JSON. Please try again or choose fewer questions.') }
-    const evidenceSource = evidence => parsed.find(n => n.text.toLowerCase().includes(evidence.trim().replace(/\s+/g, ' ').toLowerCase()))
+    const evidenceSource = evidence => parsed.find(n => n.text.replace(/\s+/g, ' ').toLowerCase().includes(evidence.trim().replace(/\s+/g, ' ').toLowerCase()))
     const candidates = (Array.isArray(result.questions) ? result.questions : []).filter(q => {
       if (!q || typeof q.question !== 'string' || typeof q.learningPoint !== 'string' || q.learningPoint.trim().length < 4 || !Array.isArray(q.options) || q.options.length !== 4 ||
           !q.options.every(o => typeof o === 'string' && o.trim()) || !Number.isInteger(q.correctAnswer) ||
