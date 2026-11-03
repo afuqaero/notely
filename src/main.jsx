@@ -294,8 +294,6 @@ function App() {
       let attempts = 0
       let batchSize = total > 50000 ? 3 : 5
       let providerRetryCount = 0
-      let timeoutRetryCount = 0
-      let unavailableRetryCount = 0
       let emptyBatchCount = 0
       let generationNotice = ''
       const generationStarted = performance.now()
@@ -316,39 +314,26 @@ function App() {
         const providerError = data.error || ''
         const requestTimedOut = response.status === 504 || /timed out|timeout/i.test(providerError)
         const incompleteResult = /cut off|empty answer|incomplete response|incomplete JSON/i.test(providerError)
-        const providerUnavailable = /RootsSys is having a server-side problem \(50[234]\)/i.test(providerError)
-        if (!response.ok && requestTimedOut && timeoutRetryCount < 1) {
-          timeoutRetryCount++
-          if (requestCount > 1) batchSize = Math.max(1, Math.floor(requestCount / 2))
-          attempts--
-          continue
-        }
-        if (!response.ok && providerUnavailable && unavailableRetryCount < 1) {
-          unavailableRetryCount++
-          await new Promise(resolve => setTimeout(resolve, 1500))
-          attempts--
-          continue
-        }
-        if (!response.ok && incompleteResult && providerRetryCount < 2) {
+        const retryableServiceError = requestTimedOut || response.status === 429 || response.status >= 500 || incompleteResult
+        if (!response.ok && retryableServiceError && providerRetryCount < 5) {
           providerRetryCount++
           if (requestCount > 1) batchSize = Math.max(1, Math.floor(requestCount / 2))
+          await new Promise(resolve => setTimeout(resolve, Math.min(8000, 1000 * (2 ** (providerRetryCount - 1)))))
           attempts--
           continue
         }
         if (!response.ok || !Array.isArray(data.questions)) {
-          if (response.status === 422 && ++emptyBatchCount < 6) {
+          if (response.status === 422 && ++emptyBatchCount < 10) {
             if (requestCount > 1) batchSize = Math.max(1, Math.floor(requestCount / 2))
             continue
           }
           if (collected.length) {
-            generationNotice = (incompleteResult ? 'RootsSys cut off the next batch.' : 'The next batch could not be completed.') + ' Keeping the ' + collected.length + ' questions already generated.'
+            generationNotice = (data.error || 'The service could not finish the next batch.') + ' Keeping the ' + collected.length + ' distinct questions already generated.'
             break
           }
           throw new Error(data.error || 'The quiz service returned an incomplete response. Please try again.')
         }
         providerRetryCount = 0
-        timeoutRetryCount = 0
-        unavailableRetryCount = 0
         const seen = new Set([...prior, ...collected.map(q => q.question)].map(q => q.toLowerCase().trim()))
         const fresh = data.questions.filter(q => !seen.has(q.question.toLowerCase().trim()))
         if (!fresh.length) {
